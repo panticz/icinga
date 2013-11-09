@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# USAGE:
+# ./check_temp.sh <warn> <crit>
+# Nagios / Icinga script to get the temperatue from TEMPer USB sensor
+
+# TODO: fix error
+# USB interrupt read: No such device
+# Fatal error> USB read failed
+
+
+OK=0
+WARNING=1
+CRITICAL=2
+UNKNOWN=3
+
+function usage()
+{
+	echo "Usage: ./check_temp.sh <warn> <crit>"
+}
+
+function check_arg()
+{
+	# make sure you supplied all 2 arguments
+	if [ $# -ne 2 ]; then
+		usage
+		exit $OK
+	fi
+}
+
+function check_warn_vs_crit()
+{
+	# make sure CRIT is larger than WARN
+	if [ $WARN -ge $CRIT ];then
+		echo "UNKNOWN: WARN value may not be greater than or equal the CRIT value"
+		exit $UNKNOWN
+	fi
+}
+
+function init()
+{
+	check_arg $*
+	check_warn_vs_crit
+}
+
+function get_hddtemp()
+{
+	# gets temperature and stores it in $HEAT
+	# and make sure we get a numeric output
+	if [ -x $PROG ];then
+		HEAT=`$PROG -m | head -1 | cut -d "." -f1 2> /dev/null`
+		case "$HEAT" in
+		[0-9]* )
+			echo "do nothing" > /dev/null
+			;;
+		* )
+			echo "UNKNOWN: Could not get temperature"
+			exit $UNKNOWN
+			;;
+		esac
+	else
+		echo "UNKNOWN: cannot execute $PROG"
+		exit $UNKNOWN
+	fi
+}
+
+function check_heat()
+{
+	# checks temperature and replies according to $CRIT and $WARN
+	if [ $HEAT -lt $WARN ];then
+		echo "OK: $HEAT°C Temperature is below warn treshold ($WARN°C)"
+		exit $OK
+	elif [ $HEAT -lt $CRIT ];then
+		echo "WARNING: $HEAT°C Temperature is above / equals warn treshold ($WARN°C)"
+		exit $WARNING
+	elif [ $HEAT -ge $CRIT ];then
+		echo "CRITICAL: $HEAT°C Temperature is above / equals crit treshold ($CRIT°C)"
+		exit $CRITICAL
+	else
+		echo "UNKNOWN: Temperature is above UNKNOWN"
+		exit $UNKNOWN
+	fi
+		
+}
+
+
+#
+# Main
+#
+PROG=/usr/local/bin/pcsensor
+WARN=$1
+CRIT=$2
+
+init $*
+get_hddtemp
+check_heat
