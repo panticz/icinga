@@ -1,0 +1,13 @@
+#!/bin/bash
+
+COUNT_MIN=${1:-1}
+COUNT=$(asterisk -rx "sip show registry" | grep -c Registered)
+STATE="${COUNT} active SIP registers (${COUNT}/${COUNT_MIN})"
+
+if [ ${COUNT} -ge ${COUNT_MIN} ]; then
+    echo "OK - ${STATE}"
+    exit 0
+else
+    echo "CRITICAL - ${STATE}"
+    exit 2
+fi
